@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { jwt } from "better-auth/plugins";
 import { client, database } from "../config/db.js";
+import { passwordPolicy } from "./password-policy.js";
 
 const frontendUrl =
   process.env.FRONTEND_URL || "http://localhost:3000";
@@ -46,5 +47,5 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [jwt()],
+  plugins: [jwt(), passwordPolicy()],
 });
