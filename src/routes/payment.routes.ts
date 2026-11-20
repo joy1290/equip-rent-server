@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 import { database } from "../config/db.js";
 import { getStripe } from "../config/stripe.js";
-import { authenticateUser } from "../middlewares/auth.middleware.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
 
 import type { Booking } from "../types/booking.types.js";
 import type { Payment } from "../types/payment.types.js";
@@ -18,7 +18,7 @@ const paymentCollection = database.collection<Payment>("payments");
 // 1. Verify Stripe Checkout Session
 // ==========================================
 
-router.get("/verify-session", authenticateUser, async (req, res) => {
+router.get("/verify-session", verifyToken, async (req, res) => {
   try {
     const sessionId = req.query.session_id;
 
@@ -158,7 +158,7 @@ router.get("/verify-session", authenticateUser, async (req, res) => {
 
 router.post(
   "/create-checkout-session",
-  authenticateUser,
+  verifyToken,
   async (req, res) => {
     try {
       const { bookingId } = req.body;
@@ -252,7 +252,7 @@ router.post(
 // 3. Get Customer Payment History
 // ==========================================
 
-router.get("/history", authenticateUser, async (req, res) => {
+router.get("/history", verifyToken, async (req, res) => {
   try {
     const payments = await paymentCollection
       .find({

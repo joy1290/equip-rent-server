@@ -12,7 +12,15 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authenticateUser = async (
+/**
+ * verifyToken — Challenge 2: JWT token verification middleware.
+ *
+ * Validates the Better Auth session JWT sent by the browser — either as the
+ * session cookie or as an `Authorization: Bearer <token>` header (the bearer
+ * plugin is enabled in `lib/auth.ts`). On success the decoded user (with
+ * role) is attached to `req.user`; otherwise a 401 JSON response is sent.
+ */
+export const verifyToken = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -25,7 +33,7 @@ export const authenticateUser = async (
     if (!session) {
       return res.status(401).json({
         success: false,
-        message: "Please login first.",
+        message: "Unauthorized. Please login first.",
       });
     }
 
@@ -33,16 +41,18 @@ export const authenticateUser = async (
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
-      role: (session.user as typeof session.user & { role?: string }).role ?? "customer",
+      role:
+        (session.user as typeof session.user & { role?: string }).role ??
+        "customer",
     };
 
     next();
   } catch (error) {
-    console.error("Authentication error:", error);
+    console.error("Token verification error:", error);
 
     return res.status(401).json({
       success: false,
-      message: "Authentication failed.",
+      message: "Invalid or expired token.",
     });
   }
 };

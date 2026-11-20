@@ -1,7 +1,7 @@
 
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
-import { jwt } from "better-auth/plugins";
+import { bearer, jwt } from "better-auth/plugins";
 import { client, database } from "../config/db.js";
 import { passwordPolicy } from "./password-policy.js";
 
@@ -47,5 +47,7 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [jwt(), passwordPolicy()],
+  // jwt() issues signed access tokens; bearer() lets API clients send them
+  // as `Authorization: Bearer <token>` (verified by the verifyToken middleware).
+  plugins: [jwt(), bearer(), passwordPolicy()],
 });

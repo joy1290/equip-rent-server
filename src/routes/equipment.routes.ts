@@ -3,12 +3,7 @@ import { Router } from "express";
 import { ObjectId, type Filter } from "mongodb";
 
 import { database } from "../config/db.js";
-import {
-  authenticateUser,
-} from "../middlewares/auth.middleware.js";
-import {
-  authorizeRoles,
-} from "../middlewares/role.middleware.js";
+import { verifyOwner, verifyAdmin } from "../middlewares/role.middleware.js";
 
 import type {
   Equipment,
@@ -33,8 +28,7 @@ const escapeRegex = (value: string) => {
 
 router.post(
   "/",
-  authenticateUser,
-  authorizeRoles("owner"),
+  verifyOwner,
   async (req, res) => {
     try {
       const validation = equipmentSchema.safeParse(req.body);
@@ -208,8 +202,7 @@ router.get("/search/filter", async (req, res) => {
 
 router.get(
   "/my-equipment",
-  authenticateUser,
-  authorizeRoles("owner"),
+  verifyOwner,
   async (req, res) => {
     try {
       const equipment = await equipmentCollection
@@ -240,8 +233,7 @@ router.get(
 
 router.get(
   "/admin/all",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (req, res) => {
     try {
       const { status, search } = req.query;
@@ -304,8 +296,7 @@ router.get(
 
 router.get(
   "/admin/stats",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (_req, res) => {
     try {
       const [total, pending, approved, rejected] =
@@ -343,8 +334,7 @@ router.get(
 
 router.get(
   "/admin/pending",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (_req, res) => {
     try {
       const equipment = await equipmentCollection
@@ -374,8 +364,7 @@ router.get(
 
 router.patch(
   "/admin/:id/status",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (req, res) => {
     try {
      const id = req.params.id;
@@ -439,8 +428,7 @@ router.patch(
 
 router.delete(
   "/admin/:id",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (req, res) => {
     try {
       const id = req.params.id;
@@ -485,8 +473,7 @@ router.delete(
 
 router.patch(
   "/:id",
-  authenticateUser,
-  authorizeRoles("owner"),
+  verifyOwner,
   async (req, res) => {
     try {
       const id = req.params.id;
@@ -564,8 +551,7 @@ router.patch(
 
 router.delete(
   "/:id",
-  authenticateUser,
-  authorizeRoles("owner"),
+  verifyOwner,
   async (req, res) => {
     try {
       const  id  = req.params.id;

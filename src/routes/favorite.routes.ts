@@ -3,8 +3,7 @@ import { Router } from "express";
 import { ObjectId } from "mongodb";
 
 import { database } from "../config/db.js";
-import { authenticateUser } from "../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../middlewares/role.middleware.js";
+import { verifyRenter } from "../middlewares/role.middleware.js";
 
 import type { Favorite } from "../types/favorite.types.js";
 import type { Equipment } from "../types/equipment.types.js";
@@ -23,8 +22,7 @@ const equipmentCollection =
 
 router.post(
   "/:equipmentId",
-  authenticateUser,
-  authorizeRoles("customer"),
+  verifyRenter,
   async (req, res) => {
     try {
       const { equipmentId } = req.params;
@@ -94,8 +92,7 @@ router.post(
 
 router.get(
   "/",
-  authenticateUser,
-  authorizeRoles("customer"),
+  verifyRenter,
   async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -157,8 +154,7 @@ router.get(
 
 router.delete(
   "/:equipmentId",
-  authenticateUser,
-  authorizeRoles("customer"),
+  verifyRenter,
   async (req, res) => {
     try {
       const { equipmentId } = req.params;

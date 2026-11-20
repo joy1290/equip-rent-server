@@ -2,8 +2,12 @@
 import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { database } from "../config/db.js";
-import { authenticateUser } from "../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../middlewares/role.middleware.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
+import {
+  verifyRenter,
+  verifyOwner,
+  verifyAdmin,
+} from "../middlewares/role.middleware.js";
 import type { Booking } from "../types/booking.types.js";
 
 const router = Router();
@@ -15,7 +19,7 @@ const equipmentCollection = database.collection("equipment");
 // Customer: Get My Bookings
 // ==========================================
 
-router.get("/my-bookings", authenticateUser, async (req, res) => {
+router.get("/my-bookings", verifyToken, async (req, res) => {
   try {
     const bookings = await bookingCollection
       .find({ customerId: req.user!.id })
@@ -41,17 +45,10 @@ router.get("/my-bookings", authenticateUser, async (req, res) => {
 // Owner: Get Owner Bookings
 // ==========================================
 
-router.get("/owner-bookings", authenticateUser, async (req, res) => {
+router.get("/owner-bookings", verifyOwner, async (req, res) => {
   try {
-    if (req.user?.role !== "owner") {
-      return res.status(403).json({
-        success: false,
-        message: "Only equipment owners can access this route.",
-      });
-    }
-
     const bookings = await bookingCollection
-      .find({ ownerId: req.user.id })
+      .find({ ownerId: req.user!.id })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -76,8 +73,7 @@ router.get("/owner-bookings", authenticateUser, async (req, res) => {
 
 router.get(
   "/admin/all-bookings",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (_req, res) => {
     try {
       const bookings = await bookingCollection
@@ -106,7 +102,7 @@ router.get(
 // Customer: Create Booking
 // ==========================================
 
-router.post("/", authenticateUser, async (req, res) => {
+router.post("/", verifyRenter, async (req, res) => {
   try {
     const {
       equipmentId,
@@ -236,15 +232,8 @@ router.post("/", authenticateUser, async (req, res) => {
 // Owner: Approve or Reject Booking
 // ==========================================
 
-router.patch("/:id/status", authenticateUser, async (req, res) => {
+router.patch("/:id/status", verifyOwner, async (req, res) => {
   try {
-    if (req.user?.role !== "owner") {
-      return res.status(403).json({
-        success: false,
-        message: "Only equipment owners can update booking status.",
-      });
-    }
-
     const id = req.params.id;
 
     if (typeof id !== "string" || !ObjectId.isValid(id)) {
@@ -266,7 +255,7 @@ router.patch("/:id/status", authenticateUser, async (req, res) => {
     const result = await bookingCollection.updateOne(
       {
         _id: new ObjectId(id),
-        ownerId: req.user.id,
+        ownerId: req.user!.id,
         bookingStatus: "Pending",
       },
       {

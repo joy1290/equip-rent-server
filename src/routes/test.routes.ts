@@ -1,13 +1,13 @@
 
 import { Router } from "express";
-import { authenticateUser } from "../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../middlewares/role.middleware.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
+import { verifyAdmin } from "../middlewares/role.middleware.js";
 
 const router = Router();
 
 router.get(
   "/profile",
-  authenticateUser,
+  verifyToken,
   (req, res) => {
     res.status(200).json({
       success: true,
@@ -19,8 +19,7 @@ router.get(
 
 router.get(
   "/admin",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   (_req, res) => {
     res.status(200).json({
       success: true,

@@ -3,12 +3,9 @@ import { Router } from "express";
 import { ObjectId } from "mongodb";
 import { database } from "../config/db.js";
 
-import {
-  authenticateUser,
-  type AuthenticatedRequest,
-} from "../middlewares/auth.middleware.js";
+import { type AuthenticatedRequest } from "../middlewares/auth.middleware.js";
 
-import { authorizeRoles } from "../middlewares/role.middleware.js";
+import { verifyAdmin } from "../middlewares/role.middleware.js";
 
 const router = Router();
 
@@ -22,8 +19,7 @@ const allowedRoles = ["customer", "owner", "admin"] as const;
 
 router.get(
   "/",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (_req, res) => {
     try {
       const users = await userCollection
@@ -65,8 +61,7 @@ router.get(
 
 router.patch(
   "/:id/role",
-  authenticateUser,
-  authorizeRoles("admin"),
+  verifyAdmin,
   async (req, res) => {
     try {
       const { id } = req.params;
