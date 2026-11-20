@@ -110,12 +110,17 @@ router.get("/search/filter", async (req, res) => {
       minPrice,
       maxPrice,
       rentalType,
+      availability,
+      sort,
+      page,
+      limit,
     } = req.query;
 
     const filter: Filter<Equipment> = {
       status: "Approved",
     };
 
+    // Challenge 1: one search term matches name, category or location
     if (search && typeof search === "string") {
       const searchRegex = new RegExp(
         escapeRegex(search),
@@ -124,6 +129,8 @@ router.get("/search/filter", async (req, res) => {
 
       filter.$or = [
         { name: searchRegex },
+        { category: searchRegex },
+        { location: searchRegex },
         { description: searchRegex },
         { brand: searchRegex },
       ];
@@ -176,14 +183,69 @@ router.get("/search/filter", async (req, res) => {
       };
     }
 
-    const equipment = await equipmentCollection
+    // Challenge 1: availability filter
+    if (availability === "available") {
+      filter.availableQuantity = { $gt: 0 };
+    } else if (availability === "unavailable") {
+      filter.availableQuantity = { $lte: 0 };
+    }
+
+    // Challenge 1: server-side sorting
+    let sortSpec: Record<string, 1 | -1> = {
+      createdAt: -1,
+    };
+
+    if (sort === "price-asc" || sort === "price_asc" || sort === "asc") {
+      sortSpec = { rentalPrice: 1 };
+    } else if (
+      sort === "price-desc" ||
+      sort === "price_desc" ||
+      sort === "desc"
+    ) {
+      sortSpec = { rentalPrice: -1 };
+    }
+
+    // Optional requirement: pagination
+    const pageNum =
+      page !== undefined && page !== "" ? Number(page) : undefined;
+    const limitNum =
+      limit !== undefined && limit !== "" ? Number(limit) : undefined;
+
+    if (
+      (pageNum !== undefined && (!Number.isInteger(pageNum) || pageNum < 1)) ||
+      (limitNum !== undefined &&
+        (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 100))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination values.",
+      });
+    }
+
+    const total = await equipmentCollection.countDocuments(filter);
+
+    let cursor = equipmentCollection
       .find(filter)
-      .sort({ createdAt: -1 })
-      .toArray();
+      .sort(sortSpec);
+
+    if (limitNum !== undefined) {
+      cursor = cursor
+        .skip(((pageNum ?? 1) - 1) * limitNum)
+        .limit(limitNum);
+    }
+
+    const equipment = await cursor.toArray();
 
     return res.status(200).json({
       success: true,
-      total: equipment.length,
+      total,
+      page: pageNum ?? 1,
+      ...(limitNum !== undefined
+        ? {
+            limit: limitNum,
+            pages: Math.ceil(total / limitNum),
+          }
+        : {}),
       equipment,
     });
   } catch (error) {
@@ -192,6 +254,33 @@ router.get("/search/filter", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Equipment search failed.",
+    });
+  }
+});
+
+// ==========================================
+// Featured Equipment (Home Page — 6 items)
+// ==========================================
+
+router.get("/featured", async (_req, res) => {
+  try {
+    const equipment = await equipmentCollection
+      .find({ status: "Approved" })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      total: equipment.length,
+      equipment,
+    });
+  } catch (error) {
+    console.error("Featured equipment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch featured equipment.",
     });
   }
 });
