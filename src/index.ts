@@ -16,6 +16,7 @@ import stripeWebhookRoutes from "./routes/stripe-webhook.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import uploadRoutes from "./routes/upload.routes.js";
 
 dotenv.config();
 
@@ -65,6 +66,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 // Unknown API routes always answer with JSON (never an HTML error page)
 app.use("/api", (req, res) => {
