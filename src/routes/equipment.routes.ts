@@ -17,6 +17,8 @@ const router = Router();
 const equipmentCollection =
   database.collection<Equipment>("equipment");
 
+const userCollection = database.collection("user");
+
 // Escape special regex characters
 const escapeRegex = (value: string) => {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -706,9 +708,28 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    // Owner information shown on the equipment details page
+    const owner =
+      ObjectId.isValid(equipment.ownerId)
+        ? await userCollection
+            .findOne(
+              { _id: new ObjectId(equipment.ownerId) },
+              { projection: { name: 1, email: 1, image: 1 } }
+            )
+        : null;
+
     return res.status(200).json({
       success: true,
-      equipment,
+      equipment: {
+        ...equipment,
+        owner: owner
+          ? {
+              name: owner.name,
+              email: owner.email,
+              image: owner.image,
+            }
+          : null,
+      },
     });
   } catch (error) {
     console.error("Equipment details error:", error);
