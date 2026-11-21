@@ -2,6 +2,7 @@
 import cron from "node-cron";
 
 import { database } from "../config/db.js";
+import { sendBookingCompletedEmails } from "../lib/mailer.js";
 
 import type { Booking } from "../types/booking.types.js";
 
@@ -9,10 +10,21 @@ const bookingCollection = database.collection<Booking>("bookings");
 
 /**
  * Marks every Confirmed booking whose rental end date has passed as
- * Completed. Returns how many bookings were updated.
+ * Completed and emails the renter + owner about it (optional requirement:
+ * automated email notifications). Returns how many bookings were updated.
  */
 export const runBookingStatusUpdate = async (): Promise<number> => {
   const now = new Date();
+
+  // Read the affected bookings first so completion emails can be sent
+  const overdueBookings = await bookingCollection
+    .find({
+      bookingStatus: "Confirmed",
+      endDate: { $lt: now },
+    })
+    .toArray();
+
+  if (overdueBookings.length === 0) return 0;
 
   const result = await bookingCollection.updateMany(
     {
@@ -31,6 +43,13 @@ export const runBookingStatusUpdate = async (): Promise<number> => {
     console.log(
       `[cron] Marked ${result.modifiedCount} overdue booking(s) as Completed.`
     );
+
+    // Automated email notifications to renter and owner
+    try {
+      await sendBookingCompletedEmails(overdueBookings);
+    } catch (error) {
+      console.error("[cron] Completion email notification failed:", error);
+    }
   }
 
   return result.modifiedCount;
