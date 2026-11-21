@@ -12,16 +12,16 @@ if (!MONGODB_URI) {
 
 const DB_NAME = "equiprent";
 
-const client = new MongoClient(MONGODB_URI, {
+export const client = new MongoClient(MONGODB_URI, {
   maxPoolSize: 10,
   minPoolSize: 0,
-  serverSelectionTimeoutMS: 15000,
-  connectTimeoutMS: 15000,
-  socketTimeoutMS: 45000,
+
+  serverSelectionTimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 60000,
+
   retryWrites: true,
 });
-
-export { client };
 
 export const database: Db = client.db(DB_NAME);
 
@@ -31,6 +31,7 @@ export const connectDB = async (): Promise<Db> => {
   if (!connectionPromise) {
     connectionPromise = (async () => {
       await client.connect();
+
       await database.command({ ping: 1 });
 
       console.log("MongoDB connected successfully!");
@@ -38,7 +39,9 @@ export const connectDB = async (): Promise<Db> => {
       return database;
     })().catch((error) => {
       connectionPromise = null;
+
       console.error("MongoDB connection failed:", error);
+
       throw error;
     });
   }
