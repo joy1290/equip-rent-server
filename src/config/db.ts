@@ -1,6 +1,6 @@
 
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import { MongoClient, type Db } from "mongodb";
 
 dotenv.config();
 
@@ -10,29 +10,38 @@ if (!MONGODB_URI) {
   throw new Error("MONGODB_URI is missing");
 }
 
-export const client = new MongoClient(MONGODB_URI);
+const DB_NAME = "equiprent";
 
-export const database = client.db("equiprent");
+const client = new MongoClient(MONGODB_URI, {
+  maxPoolSize: 10,
+  minPoolSize: 0,
+  serverSelectionTimeoutMS: 15000,
+  connectTimeoutMS: 15000,
+  socketTimeoutMS: 45000,
+  retryWrites: true,
+});
 
-let connectionPromise: Promise<MongoClient> | null = null;
+export { client };
 
-export const connectDB = async () => {
-  try {
-    if (!connectionPromise) {
-      connectionPromise = client.connect().catch((error) => {
-        connectionPromise = null;
-        throw error;
-      });
-    }
+export const database: Db = client.db(DB_NAME);
 
-    await connectionPromise;
-    await database.command({ ping: 1 });
+let connectionPromise: Promise<Db> | null = null;
 
-    console.log("MongoDB connected successfully!");
+export const connectDB = async (): Promise<Db> => {
+  if (!connectionPromise) {
+    connectionPromise = (async () => {
+      await client.connect();
+      await database.command({ ping: 1 });
 
-    return database;
-  } catch (error) {
-    console.error("MongoDB connection failed:", error);
-    throw error;
+      console.log("MongoDB connected successfully!");
+
+      return database;
+    })().catch((error) => {
+      connectionPromise = null;
+      console.error("MongoDB connection failed:", error);
+      throw error;
+    });
   }
+
+  return connectionPromise;
 };
