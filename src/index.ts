@@ -17,6 +17,7 @@ import userRoutes from "./routes/user.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
+import { startBookingStatusJob } from "./jobs/booking-status.job.js";
 
 dotenv.config();
 
@@ -123,6 +124,9 @@ const initializeServer = async () => {
           name: "unique_user_equipment_favorite",
         }
       );
+
+      // Optional requirement: automated booking status updates (node-cron)
+      startBookingStatusJob();
     })().catch((error) => {
       initializationPromise = null;
       throw error;
