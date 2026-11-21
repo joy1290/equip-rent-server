@@ -182,10 +182,15 @@ router.post(
         });
       }
 
-      if (booking.bookingStatus !== "Confirmed") {
+      // A renter is sent to checkout right after booking (Pending) and may
+      // still pay after the owner approves (Confirmed).
+      if (
+        booking.bookingStatus !== "Pending" &&
+        booking.bookingStatus !== "Confirmed"
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Your booking must be approved first.",
+          message: "Your booking must be active before payment.",
         });
       }
 
