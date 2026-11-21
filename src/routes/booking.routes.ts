@@ -9,6 +9,7 @@ import {
   verifyAdmin,
 } from "../middlewares/role.middleware.js";
 import type { Booking } from "../types/booking.types.js";
+import { populateBookings } from "../utils/populate-bookings.js";
 
 const router = Router();
 
@@ -21,10 +22,12 @@ const equipmentCollection = database.collection("equipment");
 
 router.get("/my-bookings", verifyToken, async (req, res) => {
   try {
-    const bookings = await bookingCollection
-      .find({ customerId: req.user!.id })
-      .sort({ createdAt: -1 })
-      .toArray();
+    const bookings = await populateBookings(
+      await bookingCollection
+        .find({ customerId: req.user!.id })
+        .sort({ createdAt: -1 })
+        .toArray()
+    );
 
     return res.status(200).json({
       success: true,
@@ -47,10 +50,12 @@ router.get("/my-bookings", verifyToken, async (req, res) => {
 
 router.get("/owner-bookings", verifyOwner, async (req, res) => {
   try {
-    const bookings = await bookingCollection
-      .find({ ownerId: req.user!.id })
-      .sort({ createdAt: -1 })
-      .toArray();
+    const bookings = await populateBookings(
+      await bookingCollection
+        .find({ ownerId: req.user!.id })
+        .sort({ createdAt: -1 })
+        .toArray()
+    );
 
     return res.status(200).json({
       success: true,
@@ -76,10 +81,12 @@ router.get(
   verifyAdmin,
   async (_req, res) => {
     try {
-      const bookings = await bookingCollection
-        .find({})
-        .sort({ createdAt: -1 })
-        .toArray();
+      const bookings = await populateBookings(
+        await bookingCollection
+          .find({})
+          .sort({ createdAt: -1 })
+          .toArray()
+      );
 
       return res.status(200).json({
         success: true,
