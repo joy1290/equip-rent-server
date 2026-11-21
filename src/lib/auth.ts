@@ -44,6 +44,17 @@ export const auth = betterAuth({
         defaultValue: "customer",
         input: false,
       },
+      // Editable profile fields (shown on the Profile page)
+      phone: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+      address: {
+        type: "string",
+        required: false,
+        input: true,
+      },
     },
   },
 
