@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Db, type Collection } from "mongodb";
 
 import { database } from "../config/db.js";
 import { verifyRenter } from "../middlewares/role.middleware.js";
@@ -10,10 +10,10 @@ import type { Equipment } from "../types/equipment.types.js";
 
 const router = Router();
 
-const favoritesCollection =
+const favoritesCollection: Collection<Favorite> =
   database.collection<Favorite>("favorites");
 
-const equipmentCollection =
+const equipmentCollection: Collection<Equipment> =
   database.collection<Equipment>("equipment");
 
 // ==========================================
