@@ -25,6 +25,15 @@ https://github.com/joy1290/equip-rent-server
 - Stripe webhook payment verification
 - MongoDB database integration
 - CORS configuration for frontend communication
+- **Challenge 1:** server-side search, filtering, sorting and pagination (`/api/equipment/search/filter`)
+- **Challenge 2:** `verifyToken`, `verifyRenter`, `verifyOwner`, `verifyAdmin` JWT role middlewares
+- **Challenge 3:** admin & owner analytics endpoints with monthly statistics (`/api/analytics`)
+- Featured equipment endpoint with MongoDB `limit(6)` for the home page
+- Server-side imgbb image upload (API key stays in environment variables)
+- Automated booking status updates with node-cron (marks bookings Completed after the rental end date)
+- Automated completion emails to renters and owners with nodemailer (gracefully skipped when SMTP is not configured)
+- JSON error handler and 404 responses for consistent API errors
+- Editable profile fields (phone, address)
 
 ## Technologies Used
 
@@ -35,6 +44,8 @@ https://github.com/joy1290/equip-rent-server
 - Better Auth
 - Stripe
 - Zod
+- node-cron
+- nodemailer
 - dotenv
 - CORS
 
@@ -45,11 +56,16 @@ https://github.com/joy1290/equip-rent-server
 | `/` | Server health check |
 | `/api/auth` | Authentication |
 | `/api/equipment` | Equipment operations |
+| `/api/equipment/search/filter` | Server-side search, filter, sort, pagination (Challenge 1) |
+| `/api/equipment/featured` | 6 featured approved equipment items (home page) |
 | `/api/bookings` | Booking operations |
 | `/api/payments` | Payment operations |
 | `/api/payments/webhook` | Stripe webhook |
 | `/api/users` | User operations |
 | `/api/favorites` | Favorite equipment operations |
+| `/api/analytics/admin` | Admin dashboard analytics (Challenge 3) |
+| `/api/analytics/owner` | Owner dashboard analytics (Challenge 3) |
+| `/api/uploads/imgbb` | Image upload via imgbb (API key stays server-side) |
 | `/api/test` | Testing endpoint |
 
 ## Installation and Setup
@@ -74,7 +90,11 @@ npm install
 
 ### 4. Configure environment variables
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` in the project root and fill in your values:
+
+```bash
+cp .env.example .env
+```
 
 ```env
 PORT=5000
@@ -91,9 +111,18 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+
+IMGBB_API_KEY=your_imgbb_api_key
+
+# Optional — completion email notifications (skipped when unset)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=smtp_user
+SMTP_PASS=smtp_password
+MAIL_FROM=EquipRent <no-reply@yourdomain.com>
 ```
 
-**Important:** Replace the placeholder values with your own credentials. Never commit your `.env` file or expose secret keys publicly.
+**Important:** Replace the placeholder values with your own credentials. Never commit your `.env` file or expose secret keys publicly. `MONGODB_URI`, `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `IMGBB_API_KEY` and the `SMTP_*` values are read exclusively through environment variables.
 
 ### 5. Start the development server
 
