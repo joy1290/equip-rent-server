@@ -14,6 +14,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import stripeWebhookRoutes from "./routes/stripe-webhook.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import favoriteRoutes from "./routes/favorite.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/favorites", favoriteRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // Initialize database once and reuse the connection
 let initializationPromise: Promise<void> | null = null;
