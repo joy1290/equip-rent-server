@@ -14,12 +14,17 @@ const equipmentCollection = database.collection<Equipment>("equipment");
 const bookingCollection = database.collection<Booking>("bookings");
 const paymentCollection = database.collection<Payment>("payments");
 
-/**
- * The last 12 calendar months (oldest first) as `{ month: "YYYY-MM" }`
- * skeletons so missing months can be filled with zeros for the charts.
- */
-const last12Months = (): { month: string; start: Date; end: Date }[] => {
-  const months: { month: string; start: Date; end: Date }[] = [];
+const last12Months = (): {
+  month: string;
+  start: Date;
+  end: Date;
+}[] => {
+  const months: {
+    month: string;
+    start: Date;
+    end: Date;
+  }[] = [];
+
   const now = new Date();
 
   for (let i = 11; i >= 0; i--) {
@@ -27,7 +32,9 @@ const last12Months = (): { month: string; start: Date; end: Date }[] => {
     const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
     months.push({
-      month: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
+      month: `${start.getFullYear()}-${String(
+        start.getMonth() + 1
+      ).padStart(2, "0")}`,
       start,
       end,
     });
@@ -37,7 +44,7 @@ const last12Months = (): { month: string; start: Date; end: Date }[] => {
 };
 
 // ==========================================
-// Challenge 3: Admin Analytics
+// Admin Analytics
 // ==========================================
 
 router.get("/admin", verifyAdmin, async (_req, res) => {
@@ -47,44 +54,58 @@ router.get("/admin", verifyAdmin, async (_req, res) => {
 
     const [
       totalUsers,
+      totalCustomers,
+      totalOwners,
+      totalAdmins,
       totalEquipment,
-      pendingApprovals,
+      approvedEquipment,
+      pendingEquipment,
+      rejectedEquipment,
       totalBookings,
-      completedRentals,
-      revenueResult,
-      roleBreakdown,
-      monthlyBookingRows,
+      pendingBookings,
+      confirmedBookings,
+      completedBookings,
+      cancelledBookings,
+      totalRevenueResult,
+      paidTransactions,
       monthlyRevenueRows,
     ] = await Promise.all([
       userCollection.countDocuments(),
+      userCollection.countDocuments({ role: "customer" }),
+      userCollection.countDocuments({ role: "owner" }),
+      userCollection.countDocuments({ role: "admin" }),
+
       equipmentCollection.countDocuments(),
+      equipmentCollection.countDocuments({ status: "Approved" }),
       equipmentCollection.countDocuments({ status: "Pending" }),
+      equipmentCollection.countDocuments({ status: "Rejected" }),
+
       bookingCollection.countDocuments(),
+      bookingCollection.countDocuments({ bookingStatus: "Pending" }),
+      bookingCollection.countDocuments({ bookingStatus: "Confirmed" }),
       bookingCollection.countDocuments({ bookingStatus: "Completed" }),
+      bookingCollection.countDocuments({ bookingStatus: "Cancelled" }),
+
       paymentCollection
         .aggregate<{ total: number }>([
           { $match: { status: "Paid" } },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
-        ])
-        .toArray(),
-      userCollection
-        .aggregate<{ _id: string; count: number }>([
-          { $group: { _id: "$role", count: { $sum: 1 } } },
-        ])
-        .toArray(),
-      bookingCollection
-        .aggregate<{ _id: string; count: number }>([
-          { $match: { createdAt: { $gte: twelveMonthsAgo } } },
           {
             $group: {
-              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-              count: { $sum: 1 },
+              _id: null,
+              total: { $sum: "$amount" },
             },
           },
         ])
         .toArray(),
+
+      paymentCollection.countDocuments({ status: "Paid" }),
+
       paymentCollection
-        .aggregate<{ _id: string; total: number }>([
+        .aggregate<{
+          _id: string;
+          revenue: number;
+          transactions: number;
+        }>([
           {
             $match: {
               status: "Paid",
@@ -93,49 +114,69 @@ router.get("/admin", verifyAdmin, async (_req, res) => {
           },
           {
             $group: {
-              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-              total: { $sum: "$amount" },
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m",
+                  date: "$createdAt",
+                },
+              },
+              revenue: { $sum: "$amount" },
+              transactions: { $sum: 1 },
             },
           },
         ])
         .toArray(),
     ]);
 
-    const bookingsByMonth = new Map(
-      monthlyBookingRows.map((row) => [row._id, row.count])
-    );
     const revenueByMonth = new Map(
-      monthlyRevenueRows.map((row) => [row._id, row.total])
+      monthlyRevenueRows.map((row) => [
+        row._id,
+        {
+          revenue: row.revenue,
+          transactions: row.transactions,
+        },
+      ])
     );
 
-    const monthlyStats = months.map(({ month }) => ({
-      month,
-      bookings: bookingsByMonth.get(month) ?? 0,
-      revenue: revenueByMonth.get(month) ?? 0,
-    }));
+    const monthlyRevenue = months.map(({ month }) => {
+      const [year, monthNumber] = month.split("-").map(Number);
+      const monthlyData = revenueByMonth.get(month);
 
-    const roles: Record<string, number> = {
-      customer: 0,
-      owner: 0,
-      admin: 0,
-    };
-
-    for (const row of roleBreakdown) {
-      if (row._id) roles[row._id] = row.count;
-    }
+      return {
+        year,
+        month: monthNumber,
+        revenue: monthlyData?.revenue ?? 0,
+        transactions: monthlyData?.transactions ?? 0,
+      };
+    });
 
     return res.status(200).json({
       success: true,
       data: {
-        totalUsers,
-        totalOwners: roles.owner ?? 0,
-        totalCustomers: roles.customer ?? 0,
-        totalEquipment,
-        pendingApprovals,
-        totalBookings,
-        completedRentals,
-        totalRevenue: revenueResult[0]?.total ?? 0,
-        monthlyStats,
+        users: {
+          total: totalUsers,
+          customers: totalCustomers,
+          owners: totalOwners,
+          admins: totalAdmins,
+        },
+        equipment: {
+          total: totalEquipment,
+          approved: approvedEquipment,
+          pending: pendingEquipment,
+          rejected: rejectedEquipment,
+        },
+        bookings: {
+          total: totalBookings,
+          pending: pendingBookings,
+          confirmed: confirmedBookings,
+          completed: completedBookings,
+          cancelled: cancelledBookings,
+        },
+        revenue: {
+          total: totalRevenueResult[0]?.total ?? 0,
+          paidTransactions,
+        },
+        monthlyRevenue,
       },
     });
   } catch (error) {
@@ -149,7 +190,7 @@ router.get("/admin", verifyAdmin, async (_req, res) => {
 });
 
 // ==========================================
-// Challenge 3: Owner Analytics
+// Owner Analytics
 // ==========================================
 
 router.get("/owner", verifyOwner, async (req, res) => {
@@ -169,13 +210,20 @@ router.get("/owner", verifyOwner, async (req, res) => {
       monthlyBookingsRows,
     ] = await Promise.all([
       equipmentCollection.countDocuments({ ownerId }),
-      equipmentCollection.countDocuments({ ownerId, status: "Approved" }),
-      equipmentCollection.countDocuments({ ownerId, status: "Pending" }),
+      equipmentCollection.countDocuments({
+        ownerId,
+        status: "Approved",
+      }),
+      equipmentCollection.countDocuments({
+        ownerId,
+        status: "Pending",
+      }),
       bookingCollection.countDocuments({ ownerId }),
       bookingCollection.countDocuments({
         ownerId,
         bookingStatus: "Completed",
       }),
+
       paymentCollection
         .aggregate<{ total: number }>([
           { $match: { status: "Paid" } },
@@ -189,9 +237,15 @@ router.get("/owner", verifyOwner, async (req, res) => {
           },
           { $unwind: "$booking" },
           { $match: { "booking.ownerId": ownerId } },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: "$amount" },
+            },
+          },
         ])
         .toArray(),
+
       paymentCollection
         .aggregate<{ _id: string; total: number }>([
           {
@@ -212,18 +266,34 @@ router.get("/owner", verifyOwner, async (req, res) => {
           { $match: { "booking.ownerId": ownerId } },
           {
             $group: {
-              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m",
+                  date: "$createdAt",
+                },
+              },
               total: { $sum: "$amount" },
             },
           },
         ])
         .toArray(),
+
       bookingCollection
         .aggregate<{ _id: string; count: number }>([
-          { $match: { ownerId, createdAt: { $gte: twelveMonthsAgo } } },
+          {
+            $match: {
+              ownerId,
+              createdAt: { $gte: twelveMonthsAgo },
+            },
+          },
           {
             $group: {
-              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m",
+                  date: "$createdAt",
+                },
+              },
               count: { $sum: 1 },
             },
           },
@@ -234,6 +304,7 @@ router.get("/owner", verifyOwner, async (req, res) => {
     const earningsByMonth = new Map(
       monthlyEarningsRows.map((row) => [row._id, row.total])
     );
+
     const bookingsByMonth = new Map(
       monthlyBookingsRows.map((row) => [row._id, row.count])
     );
