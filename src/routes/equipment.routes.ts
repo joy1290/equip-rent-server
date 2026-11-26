@@ -449,6 +449,83 @@ router.get(
   }
 );
 
+
+// ==========================================
+// Admin: Update Any Equipment
+// ==========================================
+
+router.patch(
+  "/admin/:id",
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      if (typeof id !== "string" || !ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid equipment ID.",
+        });
+      }
+
+      // Validate only the editable fields
+      const validation = equipmentSchema
+        .partial()
+        .safeParse(req.body);
+
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed.",
+          errors: validation.error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
+      }
+
+      const updates = validation.data;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide at least one valid field.",
+        });
+      }
+
+      const result = await equipmentCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            ...updates,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      if (!result.matchedCount) {
+        return res.status(404).json({
+          success: false,
+          message: "Equipment not found.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Equipment updated successfully!",
+      });
+    } catch (error) {
+      console.error("Admin update equipment error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update equipment.",
+      });
+    }
+  }
+);
+
+
 // ==========================================
 // 6. Admin: Approve or Reject Equipment
 // ==========================================
